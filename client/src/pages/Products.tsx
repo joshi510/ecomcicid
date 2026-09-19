@@ -6,6 +6,7 @@ import { Seo } from '@/components/Seo';
 import { ProductCard } from '@/components/product/ProductCard';
 import { StarRating } from '@/components/product/StarRating';
 import { apiGet } from '@/lib/api';
+import { listCatalogCategories, listCatalogProducts } from '@/lib/catalog';
 import type { Category, Pagination, Product } from '@/lib/types';
 
 const PRICE_MAX = 2000;
@@ -53,7 +54,11 @@ export default function Products() {
   useEffect(() => {
     apiGet<{ categories: Category[] }>('/categories')
       .then((data) => setCategories(flattenCategories(data.categories)))
-      .catch(() => setCategories([]));
+      .catch(() =>
+        listCatalogCategories()
+          .then((data) => setCategories(flattenCategories(data.categories)))
+          .catch(() => setCategories([])),
+      );
   }, []);
 
   useEffect(() => {
@@ -78,11 +83,28 @@ export default function Products() {
         setProducts(data.products);
         setPagination(data.pagination);
       })
-      .catch(() => {
-        if (!active) return;
-        setError('Could not load products. Try again shortly.');
-        setProducts([]);
-      })
+      .catch(() =>
+        listCatalogProducts({
+          page,
+          limit: 12,
+          sort: activeSort.sort,
+          order: activeSort.order,
+          category: category || undefined,
+          minPrice: Number(minPrice) > 0 ? Number(minPrice) : undefined,
+          maxPrice: Number(maxPrice) < PRICE_MAX ? Number(maxPrice) : undefined,
+          search: search || undefined,
+        })
+          .then((data) => {
+            if (!active) return;
+            setProducts(data.products);
+            setPagination(data.pagination);
+          })
+          .catch(() => {
+            if (!active) return;
+            setError('Could not load products. Try again shortly.');
+            setProducts([]);
+          }),
+      )
       .finally(() => {
         if (active) setLoading(false);
       });

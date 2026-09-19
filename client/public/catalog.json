@@ -1,0 +1,112 @@
+{
+  "categories": [
+    { "id": "cat-living", "name": "Living", "slug": "living", "parentId": null },
+    { "id": "cat-apparel", "name": "Apparel", "slug": "apparel", "parentId": null },
+    { "id": "cat-objects", "name": "Objects", "slug": "objects", "parentId": null },
+    { "id": "cat-wellness", "name": "Wellness", "slug": "wellness", "parentId": null }
+  ],
+  "products": [
+    {
+      "id": "prod-linen-lounge-chair",
+      "name": "Linen lounge chair",
+      "slug": "linen-lounge-chair",
+      "description": "A low, sculptural lounge chair in undyed linen and solid oak. Built for slow evenings.",
+      "price": "640.00",
+      "compareAtPrice": "780.00",
+      "stockQuantity": 12,
+      "sku": "NL-LIV-001",
+      "images": [
+        "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "categoryId": "cat-living",
+      "isActive": true,
+      "createdAt": "2026-09-01T10:00:00.000Z",
+      "category": { "id": "cat-living", "name": "Living", "slug": "living" }
+    },
+    {
+      "id": "prod-ceramic-pour-over-set",
+      "name": "Ceramic pour-over set",
+      "slug": "ceramic-pour-over-set",
+      "description": "Stoneware dripper and carafe with a matte glaze. Fits a standard paper filter.",
+      "price": "86.00",
+      "compareAtPrice": null,
+      "stockQuantity": 40,
+      "sku": "NL-OBJ-002",
+      "images": [
+        "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "categoryId": "cat-objects",
+      "isActive": true,
+      "createdAt": "2026-09-02T10:00:00.000Z",
+      "category": { "id": "cat-objects", "name": "Objects", "slug": "objects" }
+    },
+    {
+      "id": "prod-wool-throw-blanket",
+      "name": "Wool throw blanket",
+      "slug": "wool-throw-blanket",
+      "description": "Heavyweight merino throw with hand-finished edges. 140 × 200 cm.",
+      "price": "128.00",
+      "compareAtPrice": null,
+      "stockQuantity": 28,
+      "sku": "NL-LIV-003",
+      "images": [
+        "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "categoryId": "cat-living",
+      "isActive": true,
+      "createdAt": "2026-09-03T10:00:00.000Z",
+      "category": { "id": "cat-living", "name": "Living", "slug": "living" }
+    },
+    {
+      "id": "prod-oak-side-table",
+      "name": "Oak side table",
+      "slug": "oak-side-table",
+      "description": "A compact white-oak table with a rounded top and a single open shelf.",
+      "price": "320.00",
+      "compareAtPrice": "390.00",
+      "stockQuantity": 9,
+      "sku": "NL-LIV-004",
+      "images": [
+        "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "categoryId": "cat-living",
+      "isActive": true,
+      "createdAt": "2026-09-04T10:00:00.000Z",
+      "category": { "id": "cat-living", "name": "Living", "slug": "living" }
+    },
+    {
+      "id": "prod-atelier-daybed",
+      "name": "Atelier daybed",
+      "slug": "atelier-daybed",
+      "description": "Daybed with a slim oak frame and removable linen cover. Editor’s pick from $890.",
+      "price": "890.00",
+      "compareAtPrice": null,
+      "stockQuantity": 4,
+      "sku": "NL-LIV-005",
+      "images": [
+        "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "categoryId": "cat-living",
+      "isActive": true,
+      "createdAt": "2026-09-05T10:00:00.000Z",
+      "category": { "id": "cat-living", "name": "Living", "slug": "living" }
+    },
+    {
+      "id": "prod-organic-cotton-overshirt",
+      "name": "Organic cotton overshirt",
+      "slug": "organic-cotton-overshirt",
+      "description": "Unstructured overshirt in heavy organic cotton. Relaxed fit.",
+      "price": "165.00",
+      "compareAtPrice": null,
+      "stockQuantity": 22,
+      "sku": "NL-APP-006",
+      "images": [
+        "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1200&q=80"
+      ],
+      "categoryId": "cat-apparel",
+      "isActive": true,
+      "createdAt": "2026-09-06T10:00:00.000Z",
+      "category": { "id": "cat-apparel", "name": "Apparel", "slug": "apparel" }
+    }
+  ]
+}

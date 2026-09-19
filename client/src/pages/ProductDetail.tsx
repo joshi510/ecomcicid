@@ -7,6 +7,7 @@ import { ProductGallery } from '@/components/product/ProductGallery';
 import { QuantityStepper } from '@/components/product/QuantityStepper';
 import { StarRating } from '@/components/product/StarRating';
 import { apiGet, getApiError } from '@/lib/api';
+import { getCatalogProduct } from '@/lib/catalog';
 import { formatPrice, mediaUrl } from '@/lib/media';
 import type { ProductDetail } from '@/lib/types';
 import { useCartStore } from '@/store/cart.store';
@@ -38,9 +39,15 @@ export default function ProductDetailPage() {
       .then((data) => {
         if (active) setProduct(data);
       })
-      .catch((err: unknown) => {
-        if (active) setError(getApiError(err, 'Product not found'));
-      })
+      .catch((err: unknown) =>
+        getCatalogProduct(slug)
+          .then((data) => {
+            if (active) setProduct(data);
+          })
+          .catch(() => {
+            if (active) setError(getApiError(err, 'Product not found'));
+          }),
+      )
       .finally(() => {
         if (active) setLoading(false);
       });

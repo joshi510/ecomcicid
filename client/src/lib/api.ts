@@ -110,6 +110,9 @@ api.interceptors.response.use(
 
 export async function apiGet<T>(url: string) {
   const response = await api.get<ApiSuccess<T>>(url);
+  if (!response.data || typeof response.data !== 'object' || response.data.success !== true) {
+    throw new Error('Invalid API response');
+  }
   return response.data.data;
 }
 
