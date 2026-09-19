@@ -92,17 +92,43 @@ export async function seedCatalog() {
 }
 
 export async function cleanupTestData() {
+  const testProduct = {
+    OR: [{ sku: { startsWith: 'E2E' } }, { slug: { startsWith: TEST_PREFIX } }],
+  };
+
   await prisma.payment.deleteMany({
     where: { order: { user: { email: { startsWith: TEST_PREFIX } } } },
   });
   await prisma.order.deleteMany({
     where: { user: { email: { startsWith: TEST_PREFIX } } },
   });
+  // Guest carts survive user deletes; CartItem.product is onDelete: Restrict.
+  await prisma.cartItem.deleteMany({
+    where: {
+      OR: [
+        { product: testProduct },
+        { cart: { user: { email: { startsWith: TEST_PREFIX } } } },
+      ],
+    },
+  });
+  await prisma.cart.deleteMany({
+    where: {
+      OR: [
+        { user: { email: { startsWith: TEST_PREFIX } } },
+        { userId: null, items: { none: {} } },
+      ],
+    },
+  });
+  await prisma.review.deleteMany({
+    where: {
+      OR: [{ user: { email: { startsWith: TEST_PREFIX } } }, { product: testProduct }],
+    },
+  });
   await prisma.user.deleteMany({
     where: { email: { startsWith: TEST_PREFIX } },
   });
   await prisma.product.deleteMany({
-    where: { OR: [{ sku: { startsWith: 'E2E' } }, { slug: { startsWith: TEST_PREFIX } }] },
+    where: testProduct,
   });
   await prisma.category.deleteMany({
     where: { slug: { startsWith: TEST_PREFIX } },

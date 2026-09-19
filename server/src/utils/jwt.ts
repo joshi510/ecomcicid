@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { AppError } from './ApiError.js';
@@ -15,6 +16,7 @@ type AccessPayload = {
 type RefreshPayload = {
   sub: string;
   typ: typeof REFRESH_TYP;
+  jti: string;
 };
 
 function asExpiresIn(value: string): jwt.SignOptions['expiresIn'] {
@@ -32,7 +34,7 @@ export function signAccessToken(userId: string): string {
 }
 
 export function signRefreshToken(userId: string): string {
-  const payload: RefreshPayload = { sub: userId, typ: REFRESH_TYP };
+  const payload: RefreshPayload = { sub: userId, typ: REFRESH_TYP, jti: randomUUID() };
 
   return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
     expiresIn: asExpiresIn(env.JWT_REFRESH_EXPIRES_IN),
