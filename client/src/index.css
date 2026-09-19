@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+@config "../tailwind.config.ts";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-neutral-50 font-sans text-neutral-900 antialiased transition-colors duration-200;
+}
+
+.dark body {
+  @apply bg-neutral-950 text-neutral-100;
+}
+
+#root {
+  min-height: 100vh;
+}

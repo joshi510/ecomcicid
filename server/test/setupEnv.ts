@@ -1,0 +1,12 @@
+process.env.NODE_ENV = 'test';
+process.env.LOG_LEVEL = 'fatal';
+process.env.PORT ??= '5001';
+process.env.JWT_SECRET ??= 'test-access-secret-key';
+process.env.JWT_REFRESH_SECRET ??= 'test-refresh-secret-key';
+process.env.JWT_ACCESS_EXPIRES_IN ??= '15m';
+process.env.JWT_REFRESH_EXPIRES_IN ??= '7d';
+process.env.CLIENT_URL ??= 'http://localhost:5173';
+process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/ecom_db?schema=public';
+process.env.STRIPE_SECRET_KEY ??= 'sk_test_replace_me';
+process.env.STRIPE_PUBLISHABLE_KEY ??= 'pk_test_replace_me';
+process.env.STRIPE_WEBHOOK_SECRET ??= 'whsec_replace_me';

@@ -1,0 +1,143 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ecom_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ecom_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ecom_db?schema=public
+      JWT_SECRET: ci-access-secret-key
+      JWT_REFRESH_SECRET: ci-refresh-secret-key
+      CLIENT_URL: http://localhost:5173
+      STRIPE_SECRET_KEY: sk_test_replace_me
+      STRIPE_PUBLISHABLE_KEY: pk_test_replace_me
+      STRIPE_WEBHOOK_SECRET: whsec_replace_me
+      VITE_API_URL: http://localhost:5000/api
+      VITE_SITE_URL: http://localhost:5173
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate -w server
+
+      - name: Apply migrations
+        run: npm run prisma:migrate:deploy -w server
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test:ci
+
+      - name: Production build
+        run: npm run build:prod
+        env:
+          NODE_ENV: production
+
+  deploy:
+    name: Deploy
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy API
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          RAILWAY_DEPLOY_HOOK: ${{ secrets.RAILWAY_DEPLOY_HOOK }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: ${{ secrets.FLY_APP }}
+        run: |
+          set -e
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            echo "Triggering Render deploy hook"
+            curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+          elif [ -n "$RAILWAY_DEPLOY_HOOK" ]; then
+            echo "Triggering Railway deploy hook"
+            curl -fsS -X POST "$RAILWAY_DEPLOY_HOOK"
+          elif [ -n "$FLY_API_TOKEN" ]; then
+            echo "Deploying API to Fly.io"
+            curl -L https://fly.io/install.sh | sh
+            export FLYCTL_INSTALL="$HOME/.fly"
+            export PATH="$FLYCTL_INSTALL/bin:$PATH"
+            flyctl deploy --remote-only --config fly.toml ${FLY_APP:+--app "$FLY_APP"}
+          else
+            echo "No API deploy secret set (RENDER_DEPLOY_HOOK, RAILWAY_DEPLOY_HOOK, or FLY_API_TOKEN). Skipping API deploy."
+          fi
+
+      - name: Deploy frontend to Vercel
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_SITE_URL: ${{ secrets.VITE_SITE_URL }}
+
+      - name: Deploy frontend to Netlify
+        if: ${{ secrets.NETLIFY_AUTH_TOKEN != '' && secrets.VERCEL_TOKEN == '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install for Netlify
+        if: ${{ secrets.NETLIFY_AUTH_TOKEN != '' && secrets.VERCEL_TOKEN == '' }}
+        run: npm ci
+
+      - name: Build and deploy to Netlify
+        if: ${{ secrets.NETLIFY_AUTH_TOKEN != '' && secrets.VERCEL_TOKEN == '' }}
+        run: |
+          npm run build -w client
+          npx netlify-cli deploy --prod --dir client/dist
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_SITE_URL: ${{ secrets.VITE_SITE_URL }}

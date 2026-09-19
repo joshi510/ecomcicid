@@ -1,0 +1,49 @@
+{
+  "name": "ecom-ci-cd",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Production ecommerce monorepo — React client and Express API",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:ci": "npm run test --workspaces --if-present",
+    "build:prod": "npm run build --workspaces --if-present",
+    "start:prod": "npm run start:prod -w server",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.27.0",
+    "eslint": "^9.27.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.2.0",
+    "prettier": "^3.5.3",
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.32.1"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "prisma": true,
+    "@prisma/client": true,
+    "@prisma/engines": true
+  }
+}
