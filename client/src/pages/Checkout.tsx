@@ -9,6 +9,7 @@ import { Button, Card, Input } from '@/components/ui';
 import { OrderTotals } from '@/components/cart/OrderTotals';
 import { apiSend, getApiError } from '@/lib/api';
 import { shippingSchema, type ShippingValues } from '@/lib/checkout-schema';
+import { createLocalOrder, isApiOffline, isLocalOrder, saveLocalOrder } from '@/lib/offline';
 import { formatPrice } from '@/lib/media';
 import type { Order } from '@/lib/types';
 import { estimateTotals } from '@/lib/totals';
@@ -39,6 +40,7 @@ export default function Checkout() {
   const cart = useCartStore((state) => state.cart);
   const promoCode = useCartStore((state) => state.promoCode);
   const fetchCart = useCartStore((state) => state.fetchCart);
+  const clearCart = useCartStore((state) => state.clearCart);
   const closeDrawer = useCartStore((state) => state.closeDrawer);
   const [step, setStep] = useState(0);
   const [order, setOrder] = useState<Order | null>(null);
@@ -92,7 +94,15 @@ export default function Checkout() {
       await fetchCart();
       setStep(1);
     } catch (error) {
-      setFlowError(getApiError(error, 'Could not start checkout'));
+      if (isApiOffline(error) && cart && cart.items.length > 0) {
+        const local = createLocalOrder(cart, values, promoCode);
+        saveLocalOrder(local);
+        setOrder(local);
+        setIntent({ mock: true });
+        setStep(1);
+      } else {
+        setFlowError(getApiError(error, 'Could not start checkout'));
+      }
     } finally {
       setCreating(false);
     }
@@ -179,7 +189,8 @@ export default function Checkout() {
               onBack={() => setStep((value) => Math.max(0, value - 1))}
               onContinue={() => setStep(2)}
               onPaid={() => {
-                void fetchCart();
+                if (isLocalOrder(order)) clearCart();
+                else void fetchCart();
                 navigate(`/orders/${order.id}/confirmed`);
               }}
             />
@@ -278,7 +289,11 @@ function LocalTestPayment({
     setBusy(true);
     setError(null);
     try {
-      await apiSend('/payments/intents/mock-confirm', { orderId: order.id });
+      if (!isLocalOrder(order)) {
+        await apiSend('/payments/intents/mock-confirm', { orderId: order.id });
+      } else {
+        saveLocalOrder({ ...order, status: 'PAID' });
+      }
       toast({ variant: 'success', title: 'Test payment received' });
       onPaid();
     } catch (err) {

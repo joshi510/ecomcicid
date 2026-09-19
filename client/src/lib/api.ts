@@ -110,10 +110,14 @@ api.interceptors.response.use(
 
 export async function apiGet<T>(url: string) {
   const response = await api.get<ApiSuccess<T>>(url);
-  if (!response.data || typeof response.data !== 'object' || response.data.success !== true) {
+  return unwrap<T>(response.data);
+}
+
+function unwrap<T>(data: ApiSuccess<T> | unknown): T {
+  if (!data || typeof data !== 'object' || !('success' in data) || data.success !== true) {
     throw new Error('Invalid API response');
   }
-  return response.data.data;
+  return (data as ApiSuccess<T>).data;
 }
 
 export async function apiSend<T>(
@@ -122,15 +126,18 @@ export async function apiSend<T>(
   method: 'post' | 'put' | 'patch' | 'delete' = 'post',
 ) {
   const response = await api.request<ApiSuccess<T>>({ url, method, data: body });
-  return response.data.data;
+  return unwrap<T>(response.data);
 }
 
 export async function apiForm<T>(url: string, body: FormData, method: 'post' | 'put' = 'post') {
   const response = await api.request<ApiSuccess<T>>({ url, method, data: body });
-  return response.data.data;
+  return unwrap<T>(response.data);
 }
 
 export function getApiError(error: unknown, fallback = 'Something went wrong') {
+  if (error instanceof Error && error.message === 'Invalid API response') {
+    return 'The store API is not connected on this host.';
+  }
   if (axios.isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message ?? fallback;
   }

@@ -53,9 +53,9 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/orders/:id/confirmed" element={<OrderConfirmation />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/orders/:id/confirmed" element={<OrderConfirmation />} />
             <Route element={<AccountLayout />}>
               <Route path="/account" element={<Account />} />
               <Route path="/account/orders" element={<AccountOrders />} />

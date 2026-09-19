@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { persistCartToken } from '@/lib/cartToken';
 import { apiGet, apiSend, getApiError } from '@/lib/api';
+import { isApiOffline } from '@/lib/offline';
 import type { Cart, Product } from '@/lib/types';
 import { toast } from '@/store/ui.store';
 
@@ -21,6 +22,7 @@ type CartState = {
   ) => Promise<void>;
   updateQty: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
+  clearCart: () => void;
 };
 
 let cartEpoch = 0;
@@ -131,6 +133,10 @@ export const useCartStore = create<CartState>()(
           if (epoch !== cartEpoch) return;
           applyCart(set, cart);
         } catch (error) {
+          if (isApiOffline(error)) {
+            applyCart(set, optimistic);
+            return;
+          }
           set({ cart: previous });
           toast({
             variant: 'error',
@@ -169,13 +175,15 @@ export const useCartStore = create<CartState>()(
           const cart = await apiSend<Cart>(`/cart/items/${itemId}`, { quantity }, 'patch');
           if (epoch !== cartEpoch) return;
           applyCart(set, cart);
-        } catch {
+        } catch (error) {
+          if (isApiOffline(error)) return;
           set({ cart: previous });
           toast({ variant: 'error', title: 'Could not update cart' });
         } finally {
           endMutation();
         }
       },
+      clearCart: () => set({ cart: emptyCart() }),
       removeItem: async (itemId) => {
         const previous = get().cart;
         if (!previous) return;
@@ -193,7 +201,8 @@ export const useCartStore = create<CartState>()(
           const cart = await apiSend<Cart>(`/cart/items/${itemId}`, undefined, 'delete');
           if (epoch !== cartEpoch) return;
           applyCart(set, cart);
-        } catch {
+        } catch (error) {
+          if (isApiOffline(error)) return;
           set({ cart: previous });
           toast({ variant: 'error', title: 'Could not remove item' });
         } finally {
@@ -201,6 +210,6 @@ export const useCartStore = create<CartState>()(
         }
       },
     }),
-    { name: 'ecom-cart', partialize: (state) => ({ promoCode: state.promoCode }) },
+    { name: 'ecom-cart', partialize: (state) => ({ promoCode: state.promoCode, cart: state.cart }) },
   ),
 );
