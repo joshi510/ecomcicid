@@ -113,33 +113,34 @@ SPA fallback is in `vercel.json`.
 
 ## Frontend: Netlify
 
-1. Import the repo. Build command `npm run build -w client`, publish `client/dist` (see `netlify.toml`).
-2. Set `VITE_API_URL` and `VITE_SITE_URL` in Site configuration → Environment variables.
-3. For GitHub Actions: `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID`. The workflow uses Netlify only when `VERCEL_TOKEN` is unset.
+Netlify hosts the React storefront (static `client/dist`). It cannot run the Express API, Postgres, or Docker containers. The API image is built in GitHub Actions and published to GHCR (`ghcr.io/<owner>/<repo>-api`).
+
+1. In [Netlify](https://app.netlify.com/teams/dhrumil-tops/projects) click **Add new project** → **Import an existing project** → GitHub → `joshi510/ecomcicid`.
+2. Build settings are already in `netlify.toml` (`npm run build -w client`, publish `client/dist`).
+3. Set `VITE_API_URL` and `VITE_SITE_URL` in Project configuration → Environment variables, then trigger a redeploy.
+4. Optional GitHub Actions deploy (repo admin): add secrets `NETLIFY_AUTH_TOKEN` (Netlify user token) and `NETLIFY_SITE_ID` (Project configuration → Project details → Site ID).
 
 ---
 
 ## GitHub Actions
 
-`.github/workflows/ci.yml`:
+`.github/workflows/ci.yml` runs on every push/PR to `main` and on **Run workflow**:
 
-1. On every PR and push: install → Prisma generate/migrate → lint → typecheck → test → production build.
-2. On push to `main` after a green verify job: deploy API (Render hook, else Railway hook, else Fly), then deploy the storefront (Vercel, else Netlify).
-
-Create a GitHub **Environment** named `production` if you want approval gates.
+1. **Test and build** — Postgres service, Prisma migrate, lint, typecheck, tests, production build.
+2. **Build Docker images** — `server/Dockerfile` and `client/Dockerfile`. On `main`, images are pushed to GHCR.
+3. **Deploy storefront to Netlify** — on `main`, builds `client` and deploys with `netlify-cli` when `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` are set. If those secrets are missing, the job succeeds and Netlify’s Git integration can still publish from `netlify.toml`.
 
 ### Secrets
 
 | Secret | Used for |
 |---|---|
-| `RENDER_DEPLOY_HOOK` | API deploy (preferred) |
-| `RAILWAY_DEPLOY_HOOK` | API deploy (if no Render hook) |
-| `FLY_API_TOKEN` / `FLY_APP` | API deploy (if no hooks) |
-| `VERCEL_TOKEN` / `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` | Storefront |
-| `NETLIFY_AUTH_TOKEN` / `NETLIFY_SITE_ID` | Storefront fallback |
-| `VITE_API_URL` / `VITE_SITE_URL` | Inlined into the CI storefront build |
+| `NETLIFY_AUTH_TOKEN` / `NETLIFY_SITE_ID` | Storefront deploy from Actions |
+| `VITE_API_URL` / `VITE_SITE_URL` | Inlined into the CI storefront and web image builds |
+| `RENDER_DEPLOY_HOOK` | Optional API host (Render) |
+| `RAILWAY_DEPLOY_HOOK` | Optional API host (Railway) |
+| `FLY_API_TOKEN` / `FLY_APP` | Optional API host (Fly.io) |
 
-Missing deploy secrets skip that target; CI still passes.
+Missing Netlify secrets skip the CLI deploy; the verify and Docker jobs still run.
 
 ---
 

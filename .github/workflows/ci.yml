@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -39,7 +40,7 @@ jobs:
       STRIPE_SECRET_KEY: sk_test_replace_me
       STRIPE_PUBLISHABLE_KEY: pk_test_replace_me
       STRIPE_WEBHOOK_SECRET: whsec_replace_me
-      VITE_API_URL: http://localhost:5000/api
+      VITE_API_URL: /api
       VITE_SITE_URL: http://localhost:5173
 
     steps:
@@ -75,10 +76,74 @@ jobs:
         env:
           NODE_ENV: production
 
-  deploy:
-    name: Deploy
+  docker:
+    name: Build Docker images
     needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image names
+        id: meta
+        run: |
+          repo=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "api=ghcr.io/${repo}-api" >> "$GITHUB_OUTPUT"
+          echo "web=ghcr.io/${repo}-web" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.ref }}" = "refs/heads/main" ] && { [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; }; then
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: server/Dockerfile
+          push: ${{ steps.meta.outputs.push }}
+          tags: |
+            ${{ steps.meta.outputs.api }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.api }}:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build storefront image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: client/Dockerfile
+          push: ${{ steps.meta.outputs.push }}
+          tags: |
+            ${{ steps.meta.outputs.web }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.web }}:latest
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL || '/api' }}
+            VITE_SITE_URL=${{ secrets.VITE_SITE_URL || 'https://localhost' }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  netlify:
+    name: Deploy storefront to Netlify
+    needs: [verify, docker]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -86,58 +151,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy API
-        env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-          RAILWAY_DEPLOY_HOOK: ${{ secrets.RAILWAY_DEPLOY_HOOK }}
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-          FLY_APP: ${{ secrets.FLY_APP }}
-        run: |
-          set -e
-          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
-            echo "Triggering Render deploy hook"
-            curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
-          elif [ -n "$RAILWAY_DEPLOY_HOOK" ]; then
-            echo "Triggering Railway deploy hook"
-            curl -fsS -X POST "$RAILWAY_DEPLOY_HOOK"
-          elif [ -n "$FLY_API_TOKEN" ]; then
-            echo "Deploying API to Fly.io"
-            curl -L https://fly.io/install.sh | sh
-            export FLYCTL_INSTALL="$HOME/.fly"
-            export PATH="$FLYCTL_INSTALL/bin:$PATH"
-            flyctl deploy --remote-only --config fly.toml ${FLY_APP:+--app "$FLY_APP"}
-          else
-            echo "No API deploy secret set (RENDER_DEPLOY_HOOK, RAILWAY_DEPLOY_HOOK, or FLY_API_TOKEN). Skipping API deploy."
-          fi
-
-      - name: Deploy frontend to Vercel
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
-        run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_SITE_URL: ${{ secrets.VITE_SITE_URL }}
-
-      - name: Deploy frontend to Netlify
-        if: ${{ secrets.NETLIFY_AUTH_TOKEN != '' && secrets.VERCEL_TOKEN == '' }}
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Install for Netlify
-        if: ${{ secrets.NETLIFY_AUTH_TOKEN != '' && secrets.VERCEL_TOKEN == '' }}
+      - name: Install
         run: npm ci
 
-      - name: Build and deploy to Netlify
-        if: ${{ secrets.NETLIFY_AUTH_TOKEN != '' && secrets.VERCEL_TOKEN == '' }}
-        run: |
-          npm run build -w client
-          npx netlify-cli deploy --prod --dir client/dist
+      - name: Build storefront
+        run: npm run build -w client
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || '/api' }}
+          VITE_SITE_URL: ${{ secrets.VITE_SITE_URL }}
+
+      - name: Deploy to Netlify
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_SITE_URL: ${{ secrets.VITE_SITE_URL }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ] || [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "NETLIFY_AUTH_TOKEN / NETLIFY_SITE_ID are not set."
+            echo "Netlify Git integration can still deploy this build from netlify.toml."
+            exit 0
+          fi
+          npx --yes netlify-cli deploy --prod --dir client/dist --site "$NETLIFY_SITE_ID"

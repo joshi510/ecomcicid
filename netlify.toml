@@ -5,7 +5,12 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[context.production.environment]
+  NODE_ENV = "production"
+
+# React Router SPA fallback
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
