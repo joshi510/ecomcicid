@@ -27,10 +27,10 @@ export function isApiOffline(error: unknown) {
   if (!status) return true;
   const data = error.response?.data;
   if (typeof data === 'string') return true;
-  if (data && typeof data === 'object' && 'success' in data) {
+  if (data && typeof data === 'object' && (data as { success?: unknown }).success === false) {
     return false;
   }
-  return status === 404 || status === 405 || status >= 500;
+  return true;
 }
 
 // ----------------------------------------------------
@@ -73,6 +73,9 @@ export function registerLocalUser(params: {
 
   if (password.length < 8) {
     throw new Error('Password must be at least 8 characters.');
+  }
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+    throw new Error('Password must include upper, lower, number, and a special character.');
   }
 
   const users = getStoredUsers();

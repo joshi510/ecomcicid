@@ -29,27 +29,26 @@ export default function Register() {
       toast({ variant: 'success', title: 'Account created' });
       navigate('/account', { replace: true });
     } catch (error) {
-      if (isApiOffline(error)) {
-        try {
-          const localData = registerLocalUser({ name, email, password });
-          setSession(localData.user, localData.accessToken);
-          toast({ variant: 'success', title: 'Account created' });
-          navigate('/account', { replace: true });
-          return;
-        } catch (localError) {
-          toast({
-            variant: 'error',
-            title: 'Registration failed',
-            message: localError instanceof Error ? localError.message : 'Registration failed',
-          });
-          return;
-        }
+      if (!isApiOffline(error)) {
+        toast({
+          variant: 'error',
+          title: 'Registration failed',
+          message: getApiError(error, 'Use a unique email and a strong password.'),
+        });
+        return;
       }
-      toast({
-        variant: 'error',
-        title: 'Registration failed',
-        message: getApiError(error, 'Use a unique email and a strong password.'),
-      });
+      try {
+        const localData = registerLocalUser({ name, email, password });
+        setSession(localData.user, localData.accessToken);
+        toast({ variant: 'success', title: 'Account created' });
+        navigate('/account', { replace: true });
+      } catch (localError) {
+        toast({
+          variant: 'error',
+          title: 'Registration failed',
+          message: localError instanceof Error ? localError.message : 'Registration failed',
+        });
+      }
     } finally {
       setLoading(false);
     }
