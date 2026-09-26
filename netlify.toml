@@ -5,8 +5,18 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 [context.production.environment]
   NODE_ENV = "production"
+
+[[redirects]]
+  from = "/api/payments/intents"
+  to = "/.netlify/functions/create-payment-intent"
+  status = 200
+  force = true
 
 # React Router SPA fallback
 [[redirects]]

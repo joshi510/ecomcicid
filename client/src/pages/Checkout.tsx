@@ -10,6 +10,7 @@ import { OrderTotals } from '@/components/cart/OrderTotals';
 import { apiSend, getApiError } from '@/lib/api';
 import { shippingSchema, type ShippingValues } from '@/lib/checkout-schema';
 import { createLocalOrder, isApiOffline, isLocalOrder, saveLocalOrder } from '@/lib/offline';
+import { createStripePaymentIntent } from '@/lib/stripeIntent';
 import { formatPrice } from '@/lib/media';
 import type { Order } from '@/lib/types';
 import { estimateTotals } from '@/lib/totals';
@@ -98,7 +99,15 @@ export default function Checkout() {
         const local = createLocalOrder(cart, values, promoCode);
         saveLocalOrder(local);
         setOrder(local);
-        setIntent({ mock: true });
+        try {
+          const payment = await createStripePaymentIntent(local);
+          setIntent(payment);
+        } catch (stripeError) {
+          setFlowError(
+            stripeError instanceof Error ? stripeError.message : 'Could not start Stripe payment',
+          );
+          setIntent({ mock: true });
+        }
         setStep(1);
       } else {
         setFlowError(getApiError(error, 'Could not start checkout'));
@@ -212,7 +221,12 @@ export default function Checkout() {
                 onBack={() => setStep((value) => Math.max(0, value - 1))}
                 onContinue={() => setStep(2)}
                 onPaid={() => {
-                  void fetchCart();
+                  if (isLocalOrder(order!)) {
+                    saveLocalOrder({ ...order!, status: 'PAID' });
+                    clearCart();
+                  } else {
+                    void fetchCart();
+                  }
                   navigate(`/orders/${order!.id}/confirmed`);
                 }}
               />
