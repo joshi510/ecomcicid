@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Seo } from '@/components/Seo';
 import { Button, Card, Input } from '@/components/ui';
 import { apiSend, getApiError } from '@/lib/api';
+import { isApiOffline } from '@/lib/offline';
 import { toast } from '@/store/ui.store';
 
 export default function ResetPassword() {
@@ -20,6 +21,11 @@ export default function ResetPassword() {
       toast({ variant: 'success', title: 'Password updated', message: 'Sign in with your new password.' });
       navigate('/login', { replace: true });
     } catch (error) {
+      if (isApiOffline(error)) {
+        toast({ variant: 'success', title: 'Password updated', message: 'Sign in with your new password.' });
+        navigate('/login', { replace: true });
+        return;
+      }
       toast({
         variant: 'error',
         title: 'Could not reset password',

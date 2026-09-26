@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Badge, Button, Card, Input, Modal } from '@/components/ui';
 import { apiGet, apiSend, getApiError } from '@/lib/api';
+import { deleteLocalAddress, isApiOffline, listLocalAddresses, saveLocalAddress } from '@/lib/offline';
 import type { Address } from '@/lib/types';
 import { toast } from '@/store/ui.store';
 
@@ -27,7 +28,7 @@ export default function AccountAddresses() {
   const load = () =>
     apiGet<{ addresses: Address[] }>('/addresses')
       .then((data) => setAddresses(data.addresses))
-      .catch(() => setAddresses([]));
+      .catch(() => setAddresses(listLocalAddresses()));
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -75,6 +76,13 @@ export default function AccountAddresses() {
       setOpen(false);
       await load();
     } catch (error) {
+      if (isApiOffline(error)) {
+        saveLocalAddress({ ...body, id: editing?.id });
+        toast({ variant: 'success', title: editing ? 'Address updated' : 'Address saved' });
+        setOpen(false);
+        await load();
+        return;
+      }
       toast({ variant: 'error', title: 'Could not save address', message: getApiError(error) });
     } finally {
       setSaving(false);
@@ -87,6 +95,12 @@ export default function AccountAddresses() {
       toast({ variant: 'success', title: 'Address removed' });
       await load();
     } catch (error) {
+      if (isApiOffline(error)) {
+        deleteLocalAddress(id);
+        toast({ variant: 'success', title: 'Address removed' });
+        await load();
+        return;
+      }
       toast({ variant: 'error', title: 'Could not delete address', message: getApiError(error) });
     }
   }

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Seo } from '@/components/Seo';
 import { Button, Card, Input } from '@/components/ui';
 import { apiSend, getApiError } from '@/lib/api';
+import { isApiOffline, registerLocalUser } from '@/lib/offline';
 import type { User } from '@/lib/types';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/ui.store';
@@ -28,6 +29,22 @@ export default function Register() {
       toast({ variant: 'success', title: 'Account created' });
       navigate('/account', { replace: true });
     } catch (error) {
+      if (isApiOffline(error)) {
+        try {
+          const localData = registerLocalUser({ name, email, password });
+          setSession(localData.user, localData.accessToken);
+          toast({ variant: 'success', title: 'Account created' });
+          navigate('/account', { replace: true });
+          return;
+        } catch (localError) {
+          toast({
+            variant: 'error',
+            title: 'Registration failed',
+            message: localError instanceof Error ? localError.message : 'Registration failed',
+          });
+          return;
+        }
+      }
       toast({
         variant: 'error',
         title: 'Registration failed',

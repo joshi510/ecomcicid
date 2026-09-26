@@ -8,6 +8,7 @@ import { setCsrfToken } from '@/lib/csrf';
 import type { User } from '@/lib/types';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
+import { isApiOffline } from '@/lib/offline';
 import App from './App';
 import './index.css';
 
@@ -23,8 +24,10 @@ void (async () => {
     if (data.user && data.accessToken) {
       useAuthStore.getState().setSession(data.user, data.accessToken);
     }
-  } catch {
-    useAuthStore.getState().clearSession();
+  } catch (error) {
+    if (!isApiOffline(error)) {
+      useAuthStore.getState().clearSession();
+    }
   }
 })();
 

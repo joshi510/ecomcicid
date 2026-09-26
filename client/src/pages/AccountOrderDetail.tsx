@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Badge, Card, Skeleton } from '@/components/ui';
 import { OrderTotals } from '@/components/cart/OrderTotals';
 import { apiGet, getApiError } from '@/lib/api';
+import { loadLocalOrder } from '@/lib/offline';
 import { formatPrice } from '@/lib/media';
 import { formatDate, orderBadgeVariant } from '@/lib/status';
 import type { Order } from '@/lib/types';
@@ -20,6 +21,11 @@ export default function AccountOrderDetail() {
         if (active) setOrder(data);
       })
       .catch((err: unknown) => {
+        const local = loadLocalOrder(id);
+        if (local && active) {
+          setOrder(local);
+          return;
+        }
         if (active) setError(getApiError(err, 'Order not found'));
       });
     return () => {

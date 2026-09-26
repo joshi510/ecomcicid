@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge, Card, Skeleton } from '@/components/ui';
 import { apiGet } from '@/lib/api';
+import { listLocalOrders } from '@/lib/offline';
 import { formatPrice } from '@/lib/media';
 import { formatDate, orderBadgeVariant } from '@/lib/status';
 import type { Order, Pagination } from '@/lib/types';
@@ -17,7 +18,7 @@ export default function AccountOrders() {
         if (active) setOrders(data.orders);
       })
       .catch(() => {
-        if (active) setOrders([]);
+        if (active) setOrders(listLocalOrders());
       })
       .finally(() => {
         if (active) setLoading(false);

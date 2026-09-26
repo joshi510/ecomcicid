@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Badge, Button, Card, Input } from '@/components/ui';
 import { apiSend, getApiError } from '@/lib/api';
+import { isApiOffline, updateLocalUser } from '@/lib/offline';
 import type { User } from '@/lib/types';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/ui.store';
@@ -22,6 +23,16 @@ export default function Account() {
       if (accessToken) setSession(data.user, accessToken);
       toast({ variant: 'success', title: 'Profile updated' });
     } catch (error) {
+      if (isApiOffline(error) && user?.id) {
+        try {
+          const updated = updateLocalUser(user.id, { name, email });
+          if (accessToken) setSession(updated.user, accessToken);
+          toast({ variant: 'success', title: 'Profile updated' });
+          return;
+        } catch {
+          // fallback
+        }
+      }
       toast({ variant: 'error', title: 'Could not update profile', message: getApiError(error) });
     } finally {
       setSaving(false);

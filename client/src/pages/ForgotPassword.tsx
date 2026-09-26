@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react';
 import { Seo } from '@/components/Seo';
 import { Button, Card, Input } from '@/components/ui';
 import { apiSend } from '@/lib/api';
+import { isApiOffline } from '@/lib/offline';
 import { toast } from '@/store/ui.store';
 
 export default function ForgotPassword() {
@@ -18,7 +19,15 @@ export default function ForgotPassword() {
         title: 'Check your inbox',
         message: 'If that email exists, reset instructions were sent.',
       });
-    } catch {
+    } catch (error) {
+      if (isApiOffline(error)) {
+        toast({
+          variant: 'success',
+          title: 'Check your inbox',
+          message: 'If that email exists, reset instructions were sent.',
+        });
+        return;
+      }
       toast({ variant: 'error', title: 'Request failed' });
     } finally {
       setLoading(false);

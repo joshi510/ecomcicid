@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Seo } from '@/components/Seo';
 import { Button, Card, Input } from '@/components/ui';
 import { apiSend, getApiError } from '@/lib/api';
+import { isApiOffline, loginLocalUser } from '@/lib/offline';
 import type { User } from '@/lib/types';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/ui.store';
@@ -25,9 +26,26 @@ export default function Login() {
       });
       setSession(data.user, data.accessToken);
       toast({ variant: 'success', title: 'Signed in' });
-      const from = (location.state as { from?: string } | null)?.from ?? '/account';
+      const from = (location.state as { from?: string } | null)?.from ?? (data.user.role === 'ADMIN' ? '/admin' : '/account');
       navigate(from, { replace: true });
     } catch (error) {
+      if (isApiOffline(error)) {
+        try {
+          const localData = loginLocalUser({ email, password });
+          setSession(localData.user, localData.accessToken);
+          toast({ variant: 'success', title: 'Signed in' });
+          const from = (location.state as { from?: string } | null)?.from ?? (localData.user.role === 'ADMIN' ? '/admin' : '/account');
+          navigate(from, { replace: true });
+          return;
+        } catch (localError) {
+          toast({
+            variant: 'error',
+            title: 'Sign in failed',
+            message: localError instanceof Error ? localError.message : 'Invalid email or password.',
+          });
+          return;
+        }
+      }
       toast({
         variant: 'error',
         title: 'Sign in failed',
