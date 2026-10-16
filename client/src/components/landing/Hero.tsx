@@ -20,7 +20,7 @@ export function Hero() {
         >
           <Badge variant="primary">Spring collection</Badge>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-            Quiet luxury, made for everyday life.
+            Quiet luxury, designed for modern living.
           </h1>
           <p className="mt-4 max-w-md text-base text-neutral-300 sm:text-lg">
             Furniture, objects, and apparel designed with restraint. Free shipping over $75, two-day
