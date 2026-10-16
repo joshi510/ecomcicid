@@ -123,6 +123,5 @@ npm run prisma:migrate -w server
 - `CLIENT_URL` — CORS origin (Vite default `http://localhost:5173`)
 - `LOG_LEVEL` — Pino level (default `info`)
 - `TAX_RATE`, `SHIPPING_FLAT_RATE`, `FREE_SHIPPING_THRESHOLD` — checkout totals
-- `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
 
 Never commit real `.env` files. Templates live in each package as `.env.example`.

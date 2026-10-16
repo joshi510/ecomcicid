@@ -12,7 +12,6 @@ import { notFoundHandler } from './middleware/notFound.js';
 import { apiRateLimiter } from './middleware/rateLimiter.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { apiRouter } from './routes/index.js';
-import { stripeWebhookRouter } from './routes/stripe-webhook.routes.js';
 import { isAllowedOrigin } from './utils/origins.js';
 
 export function createApp() {
@@ -48,7 +47,6 @@ export function createApp() {
     }),
   );
   app.use(compression({ threshold: 1024 }));
-  app.use('/api/payments/webhook', express.raw({ type: 'application/json' }), stripeWebhookRouter);
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   app.use(cookieParser());

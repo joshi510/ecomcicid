@@ -49,9 +49,3 @@ services:
         value: "9.99"
       - key: FREE_SHIPPING_THRESHOLD
         value: "75"
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: STRIPE_PUBLISHABLE_KEY
-        sync: false
-      - key: STRIPE_WEBHOOK_SECRET
-        sync: false

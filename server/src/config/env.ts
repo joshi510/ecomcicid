@@ -15,9 +15,6 @@ const envSchema = z
     TAX_RATE: z.coerce.number().min(0).max(1).default(0.08),
     SHIPPING_FLAT_RATE: z.coerce.number().min(0).default(9.99),
     FREE_SHIPPING_THRESHOLD: z.coerce.number().min(0).default(75),
-    STRIPE_SECRET_KEY: z.string().min(1, 'STRIPE_SECRET_KEY is required'),
-    STRIPE_WEBHOOK_SECRET: z.string().min(1, 'STRIPE_WEBHOOK_SECRET is required'),
-    STRIPE_PUBLISHABLE_KEY: z.string().min(1, 'STRIPE_PUBLISHABLE_KEY is required'),
     REDIS_URL: z.preprocess(
       (value) => (value === '' || value === null ? undefined : value),
       z.string().url().optional(),

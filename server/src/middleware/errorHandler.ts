@@ -1,7 +1,6 @@
 import { Prisma } from '@prisma/client';
 import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
-import Stripe from 'stripe';
 import { ZodError } from 'zod';
 import { env } from '../config/env.js';
 import { AppError } from '../utils/ApiError.js';
@@ -67,23 +66,6 @@ function mapError(err: unknown): {
       statusCode: 400,
       message: 'Database request failed',
       code: err.code,
-    };
-  }
-
-  if (err instanceof Stripe.errors.StripeError) {
-    if (err instanceof Stripe.errors.StripeAuthenticationError || err.code === 'api_key_expired') {
-      return {
-        statusCode: 503,
-        message:
-          'Stripe rejected the API key. Add test keys from https://dashboard.stripe.com/test/apikeys to server/.env, then restart the API.',
-        code: 'STRIPE_NOT_CONFIGURED',
-      };
-    }
-    return {
-      statusCode:
-        err.statusCode && err.statusCode >= 400 && err.statusCode < 600 ? err.statusCode : 402,
-      message: err.message,
-      code: err.code ?? 'STRIPE_ERROR',
     };
   }
 

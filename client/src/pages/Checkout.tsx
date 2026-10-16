@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
-import { loadStripe, type Stripe } from '@stripe/stripe-js';
 import { useForm } from 'react-hook-form';
 import { Seo } from '@/components/Seo';
 import { Button, Card, Input } from '@/components/ui';
@@ -10,7 +8,6 @@ import { OrderTotals } from '@/components/cart/OrderTotals';
 import { apiSend, getApiError } from '@/lib/api';
 import { shippingSchema, type ShippingValues } from '@/lib/checkout-schema';
 import { createLocalOrder, isApiOffline, isLocalOrder, saveLocalOrder } from '@/lib/offline';
-import { createStripePaymentIntent } from '@/lib/stripeIntent';
 import { formatPrice } from '@/lib/media';
 import type { Order } from '@/lib/types';
 import { estimateTotals } from '@/lib/totals';
@@ -18,23 +15,7 @@ import { cn } from '@/lib/cn';
 import { useCartStore } from '@/store/cart.store';
 import { toast } from '@/store/ui.store';
 
-const STEPS = ['Shipping', 'Payment', 'Review'] as const;
-
-type IntentPayload = {
-  clientSecret?: string | null;
-  publishableKey?: string;
-  mock?: boolean;
-};
-
-const stripeCache = new Map<string, Promise<Stripe | null>>();
-
-function stripePromise(key: string) {
-  const existing = stripeCache.get(key);
-  if (existing) return existing;
-  const promise = loadStripe(key);
-  stripeCache.set(key, promise);
-  return promise;
-}
+const STEPS = ['Shipping', 'Review'] as const;
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -45,7 +26,6 @@ export default function Checkout() {
   const closeDrawer = useCartStore((state) => state.closeDrawer);
   const [step, setStep] = useState(0);
   const [order, setOrder] = useState<Order | null>(null);
-  const [intent, setIntent] = useState<IntentPayload | null>(null);
   const [flowError, setFlowError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -70,8 +50,8 @@ export default function Checkout() {
   const estimate = estimateTotals(cart?.subtotal ?? 0);
   const empty = items.length === 0 && !order;
 
-  const startPayment = form.handleSubmit(async (values) => {
-    if (order && intent) {
+  const startCheckout = form.handleSubmit(async (values) => {
+    if (order) {
       setStep(1);
       return;
     }
@@ -89,9 +69,8 @@ export default function Checkout() {
         sameBillingAsShipping: true,
         couponCode: promoCode || undefined,
       });
-      const payment = await apiSend<IntentPayload>('/payments/intents', { orderId: created.id });
+      await apiSend('/payments/intents', { orderId: created.id });
       setOrder(created);
-      setIntent(payment);
       await fetchCart();
       setStep(1);
     } catch (error) {
@@ -99,15 +78,6 @@ export default function Checkout() {
         const local = createLocalOrder(cart, values, promoCode);
         saveLocalOrder(local);
         setOrder(local);
-        try {
-          const payment = await createStripePaymentIntent(local);
-          setIntent(payment);
-        } catch (stripeError) {
-          setFlowError(
-            stripeError instanceof Error ? stripeError.message : 'Could not start Stripe payment',
-          );
-          setIntent({ mock: true });
-        }
         setStep(1);
       } else {
         setFlowError(getApiError(error, 'Could not start checkout'));
@@ -160,7 +130,7 @@ export default function Checkout() {
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
         <div>
           {step === 0 ? (
-            <form className="grid gap-4 sm:grid-cols-2" onSubmit={startPayment}>
+            <form className="grid gap-4 sm:grid-cols-2" onSubmit={startCheckout}>
               <div className="sm:col-span-2">
                 <Input label="Address" error={form.formState.errors.line1?.message} {...form.register('line1')} />
               </div>
@@ -185,52 +155,22 @@ export default function Checkout() {
               </div>
               <div className="sm:col-span-2">
                 <Button type="submit" disabled={creating}>
-                  {creating ? 'Preparing payment…' : 'Continue to payment'}
+                  {creating ? 'Preparing order…' : 'Continue to review'}
                 </Button>
               </div>
             </form>
           ) : null}
 
-          {step > 0 && intent?.mock && order ? (
-            <LocalTestPayment
-              step={step}
+          {step > 0 && order ? (
+            <PlaceOrder
               order={order}
-              onBack={() => setStep((value) => Math.max(0, value - 1))}
-              onContinue={() => setStep(2)}
+              onBack={() => setStep(0)}
               onPaid={() => {
                 if (isLocalOrder(order)) clearCart();
                 else void fetchCart();
                 navigate(`/orders/${order.id}/confirmed`);
               }}
             />
-          ) : null}
-
-          {step > 0 && intent && !intent.mock && intent.clientSecret && intent.publishableKey ? (
-            <Elements
-              stripe={stripePromise(intent.publishableKey)}
-              options={{
-                clientSecret: intent.clientSecret,
-                appearance: {
-                  theme: document.documentElement.classList.contains('dark') ? 'night' : 'stripe',
-                },
-              }}
-            >
-              <StripeSteps
-                step={step}
-                order={order!}
-                onBack={() => setStep((value) => Math.max(0, value - 1))}
-                onContinue={() => setStep(2)}
-                onPaid={() => {
-                  if (isLocalOrder(order!)) {
-                    saveLocalOrder({ ...order!, status: 'PAID' });
-                    clearCart();
-                  } else {
-                    void fetchCart();
-                  }
-                  navigate(`/orders/${order!.id}/confirmed`);
-                }}
-              />
-            </Elements>
           ) : null}
         </div>
 
@@ -282,24 +222,20 @@ export default function Checkout() {
   );
 }
 
-function LocalTestPayment({
-  step,
+function PlaceOrder({
   order,
   onBack,
-  onContinue,
   onPaid,
 }: {
-  step: number;
   order: Order;
   onBack: () => void;
-  onContinue: () => void;
   onPaid: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const shipping = useMemo(() => order.shippingSnapshot, [order.shippingSnapshot]);
 
-  const pay = async () => {
+  const place = async () => {
     setBusy(true);
     setError(null);
     try {
@@ -308,12 +244,12 @@ function LocalTestPayment({
       } else {
         saveLocalOrder({ ...order, status: 'PAID' });
       }
-      toast({ variant: 'success', title: 'Test payment received' });
+      toast({ variant: 'success', title: 'Order placed' });
       onPaid();
     } catch (err) {
-      const message = getApiError(err, 'Could not complete test payment');
+      const message = getApiError(err, 'Could not place order');
       setError(message);
-      toast({ variant: 'error', title: 'Payment failed', message });
+      toast({ variant: 'error', title: 'Checkout failed', message });
     } finally {
       setBusy(false);
     }
@@ -322,127 +258,28 @@ function LocalTestPayment({
   return (
     <div className="space-y-5">
       <p className="text-sm text-neutral-600">
-        Stripe test keys are not configured, so this is a local test checkout. No card will be
-        charged.
+        Card checkout is not enabled. Confirm the address and place the order — nothing will be charged.
       </p>
-      {step === 2 ? (
-        <Card className="p-4">
-          <p className="text-sm font-medium">Shipping to</p>
-          <p className="mt-1 text-sm text-neutral-600">
-            {shipping.line1}
-            {shipping.line2 ? `, ${shipping.line2}` : ''}
-            <br />
-            {shipping.city}
-            {shipping.state ? `, ${shipping.state}` : ''} {shipping.postalCode}
-            <br />
-            {shipping.country}
-          </p>
-        </Card>
-      ) : null}
+      <Card className="p-4">
+        <p className="text-sm font-medium">Shipping to</p>
+        <p className="mt-1 text-sm text-neutral-600">
+          {shipping.line1}
+          {shipping.line2 ? `, ${shipping.line2}` : ''}
+          <br />
+          {shipping.city}
+          {shipping.state ? `, ${shipping.state}` : ''} {shipping.postalCode}
+          <br />
+          {shipping.country}
+        </p>
+      </Card>
       {error ? <p className="text-danger-600 text-sm">{error}</p> : null}
       <div className="flex gap-2">
         <Button variant="outline" onClick={onBack} disabled={busy}>
           Back
         </Button>
-        {step === 1 ? (
-          <Button onClick={onContinue} disabled={busy}>
-            Continue to review
-          </Button>
-        ) : (
-          <Button onClick={() => void pay()} disabled={busy}>
-            {busy ? 'Confirming payment…' : `Pay ${formatPrice(order.total)}`}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StripeSteps({
-  step,
-  order,
-  onBack,
-  onContinue,
-  onPaid,
-}: {
-  step: number;
-  order: Order;
-  onBack: () => void;
-  onContinue: () => void;
-  onPaid: () => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const shipping = useMemo(() => order.shippingSnapshot, [order.shippingSnapshot]);
-
-  const goReview = async () => {
-    if (!elements) return;
-    setBusy(true);
-    setError(null);
-    const result = await elements.submit();
-    if (result.error) {
-      setError(result.error.message ?? 'Check your card details');
-      setBusy(false);
-      return;
-    }
-    setBusy(false);
-    onContinue();
-  };
-
-  const pay = async () => {
-    if (!stripe || !elements) return;
-    setBusy(true);
-    setError(null);
-    const result = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/orders/${order.id}/confirmed`,
-      },
-      redirect: 'if_required',
-    });
-    if (result.error) {
-      setError(result.error.message ?? 'Payment failed');
-      setBusy(false);
-      toast({ variant: 'error', title: 'Payment failed', message: result.error.message });
-      return;
-    }
-    toast({ variant: 'success', title: 'Payment received' });
-    onPaid();
-  };
-
-  return (
-    <div className="space-y-5">
-      {step === 2 ? (
-        <Card className="p-4">
-          <p className="text-sm font-medium">Shipping to</p>
-          <p className="mt-1 text-sm text-neutral-600">
-            {shipping.line1}
-            {shipping.line2 ? `, ${shipping.line2}` : ''}
-            <br />
-            {shipping.city}
-            {shipping.state ? `, ${shipping.state}` : ''} {shipping.postalCode}
-            <br />
-            {shipping.country}
-          </p>
-        </Card>
-      ) : null}
-      <PaymentElement />
-      {error ? <p className="text-danger-600 text-sm">{error}</p> : null}
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={onBack} disabled={busy}>
-          Back
+        <Button onClick={() => void place()} disabled={busy}>
+          {busy ? 'Placing order…' : `Place order · ${formatPrice(order.total)}`}
         </Button>
-        {step === 1 ? (
-          <Button onClick={() => void goReview()} disabled={!stripe || busy}>
-            {busy ? 'Checking card…' : 'Continue to review'}
-          </Button>
-        ) : (
-          <Button onClick={() => void pay()} disabled={!stripe || busy}>
-            {busy ? 'Confirming payment…' : `Pay ${formatPrice(order.total)}`}
-          </Button>
-        )}
       </div>
     </div>
   );

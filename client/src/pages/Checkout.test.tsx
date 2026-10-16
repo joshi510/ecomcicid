@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -9,17 +8,6 @@ import Checkout from './Checkout';
 vi.mock('@/lib/api', () => ({
   apiSend: vi.fn(),
   getApiError: () => 'Could not start checkout',
-}));
-
-vi.mock('@stripe/stripe-js', () => ({
-  loadStripe: vi.fn(),
-}));
-
-vi.mock('@stripe/react-stripe-js', () => ({
-  Elements: ({ children }: { children: ReactNode }) => children,
-  PaymentElement: () => <div>Payment element</div>,
-  useStripe: () => null,
-  useElements: () => null,
 }));
 
 const filledCart = {
@@ -76,8 +64,8 @@ describe('Checkout form', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('button', { name: /continue to payment/i })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /continue to payment/i }));
+    expect(screen.getByRole('button', { name: /continue to review/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /continue to review/i }));
 
     expect(await screen.findByText('Street address is required')).toBeInTheDocument();
     expect(screen.getByText('City is required')).toBeInTheDocument();
@@ -85,7 +73,7 @@ describe('Checkout form', () => {
     expect(apiSend).not.toHaveBeenCalled();
   });
 
-  it('submits a valid address and starts payment', async () => {
+  it('submits a valid address and opens review', async () => {
     const user = userEvent.setup();
     const { apiSend } = await import('@/lib/api');
     vi.mocked(apiSend)
@@ -105,10 +93,7 @@ describe('Checkout form', () => {
         items: [{ id: 'oi-1', name: 'Oak side table', sku: 'OAK', unitPrice: '40.00', quantity: 1, lineTotal: '40.00' }],
         createdAt: new Date().toISOString(),
       })
-      .mockResolvedValueOnce({
-        clientSecret: 'secret',
-        publishableKey: 'pk_test_123',
-      });
+      .mockResolvedValueOnce({ mock: true });
 
     render(
       <MemoryRouter>
@@ -119,9 +104,10 @@ describe('Checkout form', () => {
     await user.type(screen.getByRole('textbox', { name: 'Address' }), '100 Market Street');
     await user.type(screen.getByRole('textbox', { name: 'City' }), 'Austin');
     await user.type(screen.getByRole('textbox', { name: 'Postal code' }), '78701');
-    await user.click(screen.getByRole('button', { name: /continue to payment/i }));
+    await user.click(screen.getByRole('button', { name: /continue to review/i }));
 
-    expect(await screen.findByText('Payment element')).toBeInTheDocument();
+    expect(await screen.findByText(/card checkout is not enabled/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /place order/i })).toBeInTheDocument();
     expect(apiSend).toHaveBeenCalledWith(
       '/orders',
       expect.objectContaining({
@@ -134,46 +120,5 @@ describe('Checkout form', () => {
         }),
       }),
     );
-  });
-
-  it('uses local test checkout when Stripe is not configured', async () => {
-    const user = userEvent.setup();
-    const { apiSend } = await import('@/lib/api');
-    vi.mocked(apiSend)
-      .mockResolvedValueOnce({
-        id: 'order-1',
-        orderNumber: 'ORD-1',
-        status: 'PENDING',
-        subtotal: '40.00',
-        discountAmount: '0.00',
-        shippingAmount: '9.99',
-        taxAmount: '3.20',
-        total: '53.19',
-        currency: 'USD',
-        coupon: null,
-        shippingSnapshot: { line1: '100 Market Street', city: 'Austin', postalCode: '78701', country: 'US' },
-        billingSnapshot: {},
-        items: [{ id: 'oi-1', name: 'Oak side table', sku: 'OAK', unitPrice: '40.00', quantity: 1, lineTotal: '40.00' }],
-        createdAt: new Date().toISOString(),
-      })
-      .mockResolvedValueOnce({
-        mock: true,
-        clientSecret: null,
-        publishableKey: '',
-      });
-
-    render(
-      <MemoryRouter>
-        <Checkout />
-      </MemoryRouter>,
-    );
-
-    await user.type(screen.getByRole('textbox', { name: 'Address' }), '100 Market Street');
-    await user.type(screen.getByRole('textbox', { name: 'City' }), 'Austin');
-    await user.type(screen.getByRole('textbox', { name: 'Postal code' }), '78701');
-    await user.click(screen.getByRole('button', { name: /continue to payment/i }));
-
-    expect(await screen.findByText(/local test checkout/i)).toBeInTheDocument();
-    expect(screen.queryByText('Payment element')).not.toBeInTheDocument();
   });
 });

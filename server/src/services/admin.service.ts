@@ -1,7 +1,6 @@
 import { OrderStatus, Prisma, UserRole } from '@prisma/client';
 import { checkoutConfig } from '../config/checkout.js';
 import { env } from '../config/env.js';
-import { isStripeConfigured } from '../lib/stripe.js';
 import { prisma } from '../prisma/client.js';
 import { AppError } from '../utils/ApiError.js';
 import { moneyString } from '../utils/money.js';
@@ -191,6 +190,5 @@ export function getStoreSettings() {
     taxRate: checkoutConfig.taxRate,
     shippingFlatRate: checkoutConfig.shippingFlatRate,
     freeShippingThreshold: checkoutConfig.freeShippingThreshold,
-    stripeConfigured: isStripeConfigured(),
   };
 }

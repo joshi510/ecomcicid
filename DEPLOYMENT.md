@@ -15,7 +15,7 @@ docker compose up --build
 - Postgres: localhost:5432 (`postgres` / `postgres` / `ecom_db`)
 - Redis: localhost:6379
 
-Compose runs the API as `NODE_ENV=development` so HTTPS redirects do not fire on `http://localhost`. Override JWT and Stripe values with a root `.env` (see `docker-compose.yml`).
+Compose runs the API as `NODE_ENV=development` so HTTPS redirects do not fire on `http://localhost`. Override JWT values with a root `.env` (see `docker-compose.yml`).
 
 ```bash
 npm run docker:up      # compose up --build
@@ -57,8 +57,6 @@ VITE_API_URL=https://your-api.example/api
 VITE_SITE_URL=https://your-storefront.example
 ```
 
-Create a Stripe webhook for `https://your-api.example/api/payments/webhook`.
-
 ---
 
 ## Backend: Render
@@ -70,7 +68,7 @@ Create a Stripe webhook for `https://your-api.example/api/payments/webhook`.
 5. After the first deploy, copy the service URL into `CLIENT_URL` on the API and `VITE_API_URL` on the frontend, then redeploy both.
 6. Create a **Deploy Hook** and store it as GitHub secret `RENDER_DEPLOY_HOOK`.
 
-Blueprint alternative: `render.yaml` (`CLIENT_URL` and Stripe keys stay manual).
+Blueprint alternative: `render.yaml` (`CLIENT_URL` stays manual).
 
 ## Backend: Railway
 
@@ -88,7 +86,7 @@ fly postgres create --name ecom-pg
 fly postgres attach ecom-pg
 fly redis create
 fly secrets set JWT_SECRET=... JWT_REFRESH_SECRET=... CLIENT_URL=https://shop.example.com \
-  COOKIE_SAMESITE=none STRIPE_SECRET_KEY=... STRIPE_PUBLISHABLE_KEY=... STRIPE_WEBHOOK_SECRET=...
+  COOKIE_SAMESITE=none
 fly deploy --config fly.toml --dockerfile server/Dockerfile
 ```
 
@@ -154,8 +152,6 @@ Missing Netlify secrets skip the CLI deploy; the verify and Docker jobs still ru
 - [ ] `REDIS_URL` set if you want shared product-list cache across instances
 - [ ] `CLIENT_URL` is the exact storefront origin (scheme + host, no trailing slash)
 - [ ] `COOKIE_SAMESITE=none` for split hosts, or `strict` on a shared parent domain
-- [ ] Live Stripe keys (`sk_live_`, `pk_live_`) — not `sk_test_replace_me`
-- [ ] Stripe webhook endpoint + `STRIPE_WEBHOOK_SECRET` for `/api/payments/webhook`
 - [ ] `VITE_API_URL` and `VITE_SITE_URL` set **before** the frontend production build
 - [ ] `client/public/sitemap.xml` host matches `VITE_SITE_URL`
 - [ ] Tax / shipping env values match the live catalog
@@ -172,7 +168,6 @@ Missing Netlify secrets skip the CLI deploy; the verify and Docker jobs still ru
 
 - [ ] Platform TLS is on; API `enforceHttps` + HSTS are active
 - [ ] CORS origin is only the storefront
-- [ ] Stripe webhook is the only unsigned raw-body route
 - [ ] Secrets live in the host’s secret store, not in git
 - [ ] GitHub environment protection / required reviewers on `production`
 
@@ -199,7 +194,7 @@ Not wired yet. Before launch:
 - [ ] `GET /api/health` returns `database: up`
 - [ ] Register, login, refresh (cookie present), logout
 - [ ] Guest cart survives reload, then merges on login
-- [ ] Checkout with a Stripe test card on the live webhook, then switch to live mode
+- [ ] Checkout places an order without a payment gateway
 - [ ] Admin product upload, archive, and order status
 - [ ] Lighthouse on the production URL (see `LIGHTHOUSE.md`)
 - [ ] `robots.txt` and `sitemap.xml` are reachable

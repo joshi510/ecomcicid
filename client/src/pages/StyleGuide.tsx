@@ -14,7 +14,7 @@ export default function StyleGuide() {
             <p className="text-primary-600 text-sm font-medium">Design system</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight">Northline UI</h1>
             <p className="mt-2 max-w-2xl text-neutral-600 dark:text-neutral-400">
-              Stripe / Linear inspired primitives: Inter, indigo primary, soft cards, and
+              Linear-inspired primitives: Inter, indigo primary, soft cards, and
               class-based dark mode.
             </p>
           </div>

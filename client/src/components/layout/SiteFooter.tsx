@@ -100,7 +100,6 @@ export function SiteFooter() {
             <PayBadge label="Mastercard" />
             <PayBadge label="Amex" />
             <PayBadge label="PayPal" />
-            <PayBadge label="Stripe" />
           </div>
         </div>
       </div>

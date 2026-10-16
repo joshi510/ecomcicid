@@ -39,11 +39,6 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     return;
   }
 
-  if (req.originalUrl.startsWith('/api/payments/webhook')) {
-    next();
-    return;
-  }
-
   if (!isAllowedOrigin(req.headers.origin)) {
     next(new AppError(403, 'Origin is not allowed', 'CSRF_ORIGIN'));
     return;

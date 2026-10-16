@@ -10,7 +10,6 @@ type Settings = {
   taxRate: number;
   shippingFlatRate: number;
   freeShippingThreshold: number;
-  stripeConfigured: boolean;
 };
 
 export default function AdminSettings() {
@@ -31,7 +30,6 @@ export default function AdminSettings() {
     ['Tax rate', `${(settings.taxRate * 100).toFixed(1)}%`],
     ['Flat shipping', formatPrice(settings.shippingFlatRate)],
     ['Free shipping over', formatPrice(settings.freeShippingThreshold)],
-    ['Stripe', settings.stripeConfigured ? 'Configured' : 'Placeholder keys — payments will fail'],
   ];
 
   return (

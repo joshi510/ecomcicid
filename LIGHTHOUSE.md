@@ -27,7 +27,6 @@ Run Chrome Lighthouse (Mobile + Desktop) against the production build (`npm run 
 - [x] Gzip/Brotli: API responses are compressed (`compression` middleware).
 - [x] Product listing responses send `Cache-Control` and an optional Redis/memory cache.
 - [ ] Enable Brotli at the CDN/nginx layer for static JS/CSS.
-- [ ] Confirm Stripe.js is only loaded on `/checkout` (route-split already).
 
 ## Suggested command
 
