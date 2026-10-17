@@ -176,4 +176,4 @@ jobs:
             echo "Netlify Git integration can still deploy this build from netlify.toml."
             exit 0
           fi
-          npx --yes netlify-cli deploy --prod --dir client/dist --site "$NETLIFY_SITE_ID"
+          npx --yes netlify-cli deploy --prod --dir client/dist --site "$NETLIFY_SITE_ID" --filter client
