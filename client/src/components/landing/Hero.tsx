@@ -18,7 +18,7 @@ export function Hero() {
           variants={fadeUp}
           transition={{ duration: 0.55, ease: 'easeOut' }}
         >
-          <Badge variant="primary">Spring collection</Badge>
+          <Badge variant="primary">Autumn collection</Badge>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
             Quiet luxury, designed for modern living.
           </h1>
